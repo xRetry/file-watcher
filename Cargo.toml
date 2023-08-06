@@ -7,7 +7,8 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0.72"
-#ftp = { version = "3.0.1", features = ["openssl"] }
 suppaftp = { version = "5.1.0", features = ["native-tls"] }
 notify = "6.0.1"
 regex = "1.9.1"
+serde = { version = "1.0", features = ["derive"] }
+serde_yaml = "0.9.25"

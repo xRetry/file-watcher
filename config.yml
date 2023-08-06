@@ -1,0 +1,4 @@
+actions:
+  - regex: .*.scss
+    action: ls -la
+
