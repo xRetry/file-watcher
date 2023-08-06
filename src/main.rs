@@ -1,13 +1,29 @@
-use notify::{Watcher, RecursiveMode, EventKind, event::ModifyKind, RecommendedWatcher, Config};
+use notify::{Watcher, RecursiveMode, EventKind, event::ModifyKind, RecommendedWatcher};
 use regex::RegexSet;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use anyhow::{Result, bail};
 use std::process::Command;
 use serde::Deserialize;
 
+#[derive(Debug, Deserialize)]
+struct CommandConfig {
+    regex: String,
+    cmd: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct SassConfig {
+    out_dir: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct Config {
+    sass: Option<SassConfig>,
+    command: Vec<CommandConfig>,
+}
 
 trait Action {
-    fn exec_if_match(&self, path: &str) -> bool;
+    fn exec_if_match(&self, path: &PathBuf) -> bool;
 }
 
 struct CommandAction<'a> {
@@ -31,9 +47,10 @@ impl<'a> CommandAction<'a> {
 }
 
 impl Action for CommandAction<'_> {
-    fn exec_if_match(&self, path: &str) -> bool {
-        if !self.regex.is_match(path) { return false; }
-        println!("{}", path);
+    fn exec_if_match(&self, path: &PathBuf) -> bool {
+        let path_str = path.to_str().unwrap();
+        if !self.regex.is_match(path_str) { return false; }
+        println!("{}", path_str);
 
         let mut command = Command::new(self.prog);
         for arg in &self.args {
@@ -47,14 +64,67 @@ impl Action for CommandAction<'_> {
     }
 }
 
+struct SassAction {
+    regex: RegexSet, 
+    out_dir: PathBuf,
+}
+
+impl SassAction {
+    fn new(out_dir: &str) -> Self {
+        Self {
+            regex: RegexSet::new(&[r".*.scss$"]).unwrap(),
+            out_dir: Path::new(out_dir).to_path_buf(),
+        }
+    }
+}
+
+impl Action for SassAction {
+    fn exec_if_match(&self, path: &PathBuf) -> bool {
+        let path_str = path.to_str().unwrap();
+        if !self.regex.is_match(path_str) { return false; }
+
+        let Some(file_name) = path.file_stem() else { return false };
+
+        let out_path = if self.out_dir.is_absolute() {
+            self.out_dir.join(file_name).join(".css")
+        } else {
+            let Some(file_dir) = path.parent() else { return false };
+            file_dir.join(&self.out_dir).join(file_name).join(".css")
+        };
+
+        let mut command = Command::new("sass");
+        command.arg(path_str);
+        command.arg(out_path);
+
+        let Ok(out) = command.output() else {
+                return false;
+            };
+        println!("{:?}", out);
+        return true;
+    }
+}
+
 fn main() -> Result<()> {
-    let actions = [
-        CommandAction::new(r".*.scss$", "ls -la")?,
-    ];
+    let reader = std::fs::File::open("config.yml")?;
+    let config: Config = serde_yaml::from_reader(reader)?;
+    println!("{:?}", config);
+
+    let mut actions: Vec<Box<dyn Action>> = Vec::new();
+    match config.sass {
+        Some(sass_config) => actions.push(Box::new(SassAction::new(&sass_config.out_dir))),
+        None => (),
+    }
+
+    // TODO: Create and add CommandActions
+    
+    //return Ok(());
+    //let actions = [
+    //    CommandAction::new(r".*.scss$", "ls -la")?,
+    //];
 
     let (tx, rx) = std::sync::mpsc::channel();
 
-    let mut watcher = RecommendedWatcher::new(tx, Config::default())?;
+    let mut watcher = RecommendedWatcher::new(tx, notify::Config::default())?;
     watcher.watch(Path::new("."), RecursiveMode::Recursive)?;
 
     for event in rx {
@@ -64,12 +134,8 @@ fn main() -> Result<()> {
                 match event.kind {
                     EventKind::Modify(ModifyKind::Data(_)) => {
                         for path_buff in &event.paths {
-                            let Some(path) = path_buff.to_str() else {
-                                continue;
-                            };
-
                             for action in &actions {
-                                action.exec_if_match(path);
+                                action.exec_if_match(path_buff);
                             }
                         }
                     },

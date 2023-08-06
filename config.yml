@@ -1,4 +1,6 @@
-actions:
-  - regex: .*.scss
-    action: ls -la
+sass:
+  out_dir: css/
 
+command:
+  - regex: ""
+    cmd: "sass {file_dir}:css/{file_name}.css"
