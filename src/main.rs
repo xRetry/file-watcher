@@ -28,7 +28,7 @@ trait Action {
 
 struct CommandAction<'a> {
     regex: RegexSet,
-    prog: &'a str,
+    cmd: &'a str,
     args: Vec<&'a str>,
 }
 
@@ -37,28 +37,53 @@ impl<'a> CommandAction<'a> {
         let regex = RegexSet::new(&[regex])?;
 
         let mut cmd_split = command.split_whitespace();
-        let Some(prog) = cmd_split.next() else {
+        let Some(cmd) = cmd_split.next() else {
             bail!("Invalid command!")
         };
         let args = cmd_split.collect();
 
-        Ok(Self{ regex, prog, args })
+        Ok(Self{ regex, cmd, args })
     }
 }
 
 impl Action for CommandAction<'_> {
     fn exec_if_match(&self, path: &PathBuf) -> bool {
-        let path_str = path.to_str().unwrap();
+        let path_str = path.to_str()
+            .unwrap();
         if !self.regex.is_match(path_str) { return false; }
         println!("{}", path_str);
 
-        let mut command = Command::new(self.prog);
+        let file = path.file_name()
+            .and_then(|x| x.to_str());
+        let file_name = path.file_stem()
+            .and_then(|x| x.to_str());
+        let file_dir = path.parent()
+            .and_then(|x| x.to_str());
+
+
+        let mut command = Command::new(self.cmd);
         for arg in &self.args {
+            let mut arg = arg.to_string();
+
+            if file.is_some() {
+                arg = arg.replace("{file}", file.unwrap());
+            }
+
+            if file_name.is_some() {
+                arg = arg.replace("{file_name}", file_name.unwrap());
+            }
+
+            if file_name.is_some() {
+                arg = arg.replace("{dir}", file_dir.unwrap());
+            }
+
             command.arg(arg);
         }
+
         let Ok(out) = command.output() else {
-                return false;
-            };
+            return false;
+        };
+
         println!("{:?}", out);
         return true;
     }
@@ -113,6 +138,10 @@ fn main() -> Result<()> {
     match config.sass {
         Some(sass_config) => actions.push(Box::new(SassAction::new(&sass_config.out_dir))),
         None => (),
+    }
+    for cmd in &config.command {
+        let Ok(c) = CommandAction::new(&cmd.regex, &cmd.cmd) else { continue };
+        actions.push(Box::new(c));
     }
 
     // TODO: Create and add CommandActions

@@ -3,4 +3,4 @@ sass:
 
 command:
   - regex: ""
-    cmd: "sass {file_dir}:css/{file_name}.css"
+    cmd: sass {file_dir}:css/{file_name}.css
