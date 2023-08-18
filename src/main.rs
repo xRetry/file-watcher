@@ -51,7 +51,7 @@ impl Action for CommandAction<'_> {
         let path_str = path.to_str()
             .unwrap();
         if !self.regex.is_match(path_str) { return false; }
-        println!("{}", path_str);
+        print!("{} ... ", path_str);
 
         let file = path.file_name()
             .and_then(|x| x.to_str());
@@ -59,7 +59,6 @@ impl Action for CommandAction<'_> {
             .and_then(|x| x.to_str());
         let file_dir = path.parent()
             .and_then(|x| x.to_str());
-
 
         let mut command = Command::new(self.cmd);
         for arg in &self.args {
@@ -74,18 +73,22 @@ impl Action for CommandAction<'_> {
             }
 
             if file_name.is_some() {
-                arg = arg.replace("{dir}", file_dir.unwrap());
+                arg = arg.replace("{file_dir}", file_dir.unwrap());
             }
 
             command.arg(arg);
         }
-
-        let Ok(out) = command.output() else {
-            return false;
+        
+        return match command.output() {
+            Ok(_) => {
+                print!("done\n");
+                true
+            },
+            Err(e) => {
+                print!("error\n{}\n", e);
+                false
+            },
         };
-
-        println!("{:?}", out);
-        return true;
     }
 }
 
@@ -132,7 +135,7 @@ impl Action for SassAction {
 fn main() -> Result<()> {
     let reader = std::fs::File::open("config.yml")?;
     let config: Config = serde_yaml::from_reader(reader)?;
-    println!("{:?}", config);
+    println!("Config loaded - Waiting for changes..");
 
     let mut actions: Vec<Box<dyn Action>> = Vec::new();
     match config.sass {
