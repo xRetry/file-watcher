@@ -85,7 +85,9 @@ impl Action for CommandAction<'_> {
                 true
             },
             Err(e) => {
-                print!("error\n{}\n", e);
+                println!("error");
+                println!(">>> Command: {:?}", command);
+                println!(">>> Error: {}", e);
                 false
             },
         };
@@ -123,6 +125,7 @@ impl Action for SassAction {
         let mut command = Command::new("sass");
         command.arg(path_str);
         command.arg(out_path);
+        println!("{:?}", command);
 
         let Ok(out) = command.output() else {
                 return false;
@@ -162,9 +165,8 @@ fn main() -> Result<()> {
     for event in rx {
         match event {
             Ok(event) => {
-                //println!("event: {:?}", &event);
                 match event.kind {
-                    EventKind::Modify(ModifyKind::Data(_)) => {
+                    EventKind::Modify(ModifyKind::Any) => {
                         for path_buff in &event.paths {
                             for action in &actions {
                                 action.exec_if_match(path_buff);

@@ -2,5 +2,5 @@
 #  out_dir: css/
 
 command:
-  - regex: ".scss"
+  - regex: ".scss$"
     cmd: sass {file_dir}/{file}:css/{file_name}.css
