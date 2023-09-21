@@ -12,13 +12,8 @@ struct CommandConfig {
 }
 
 #[derive(Debug, Deserialize)]
-struct SassConfig {
-    out_dir: String,
-}
-
-#[derive(Debug, Deserialize)]
 struct Config {
-    sass: Option<SassConfig>,
+    path: Option<String>,
     command: Vec<CommandConfig>,
 }
 
@@ -94,73 +89,27 @@ impl Action for CommandAction<'_> {
     }
 }
 
-struct SassAction {
-    regex: RegexSet, 
-    out_dir: PathBuf,
-}
-
-impl SassAction {
-    fn new(out_dir: &str) -> Self {
-        Self {
-            regex: RegexSet::new(&[r".*.scss$"]).unwrap(),
-            out_dir: Path::new(out_dir).to_path_buf(),
-        }
-    }
-}
-
-impl Action for SassAction {
-    fn exec_if_match(&self, path: &PathBuf) -> bool {
-        let path_str = path.to_str().unwrap();
-        if !self.regex.is_match(path_str) { return false; }
-
-        let Some(file_name) = path.file_stem() else { return false };
-
-        let out_path = if self.out_dir.is_absolute() {
-            self.out_dir.join(file_name).join(".css")
-        } else {
-            let Some(file_dir) = path.parent() else { return false };
-            file_dir.join(&self.out_dir).join(file_name).join(".css")
-        };
-
-        let mut command = Command::new("sass");
-        command.arg(path_str);
-        command.arg(out_path);
-        println!("{:?}", command);
-
-        let Ok(out) = command.output() else {
-                return false;
-            };
-        println!("{:?}", out);
-        return true;
-    }
-}
 
 fn main() -> Result<()> {
-    let reader = std::fs::File::open("config.yml")?;
+    let args: Vec<String> = std::env::args().collect();
+    let config_path = args.get(1)
+        .expect("No config path provided!");
+    let reader = std::fs::File::open(config_path)
+        .expect(&format!("Config file not found: {}", config_path));
     let config: Config = serde_yaml::from_reader(reader)?;
-    println!("Config loaded - Waiting for changes..");
 
     let mut actions: Vec<Box<dyn Action>> = Vec::new();
-    match config.sass {
-        Some(sass_config) => actions.push(Box::new(SassAction::new(&sass_config.out_dir))),
-        None => (),
-    }
     for cmd in &config.command {
         let Ok(c) = CommandAction::new(&cmd.regex, &cmd.cmd) else { continue };
         actions.push(Box::new(c));
     }
 
-    // TODO: Create and add CommandActions
-    
-    //return Ok(());
-    //let actions = [
-    //    CommandAction::new(r".*.scss$", "ls -la")?,
-    //];
-
     let (tx, rx) = std::sync::mpsc::channel();
-
     let mut watcher = RecommendedWatcher::new(tx, notify::Config::default())?;
-    watcher.watch(Path::new("."), RecursiveMode::Recursive)?;
+    watcher.watch(Path::new(&config.path.unwrap_or(".".to_string())), RecursiveMode::Recursive)?;
+    watcher.unwatch(Path::new("target"))?;
+
+    println!("Config loaded - Waiting for changes..");
 
     for event in rx {
         match event {
