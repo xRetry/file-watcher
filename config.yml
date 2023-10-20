@@ -1,3 +1,14 @@
+exclude:
+  - ignore
+
 command:
   - regex: ".scss$"
     cmd: cmd /c sass {file_dir}/{file}:{file_dir}/css/{file_name}.css
+
+  - regex: "chain"
+    chain: 
+      - efase
+      - fasefa
+      - efase
+
+
