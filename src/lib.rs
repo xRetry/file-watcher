@@ -6,17 +6,17 @@ use std::process::Command;
 use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]
-struct CommandConfig {
-    regex: String,
-    cmd: Option<String>,
-    chain: Option<Vec<String>>,
+pub struct CommandConfig {
+    pub regex: String,
+    pub cmd: Option<String>,
+    pub chain: Option<Vec<String>>,
 }
 
 #[derive(Debug, Deserialize)]
-struct Config {
-    path: Option<String>,
-    exclude: Option<Vec<String>>,
-    command: Vec<CommandConfig>,
+pub struct Config {
+    pub path: Option<String>,
+    pub exclude: Option<Vec<String>>,
+    pub command: Vec<CommandConfig>,
 }
 
 trait Action {
@@ -105,7 +105,7 @@ impl Action for CommandAction {
     }
 }
 
-fn parse_args() -> Result<Config> {
+pub fn parse_args() -> Result<Config> {
     let args: Vec<String> = std::env::args().collect();
     let config_path = args.get(1)
         .expect("No config path provided!");
@@ -115,9 +115,7 @@ fn parse_args() -> Result<Config> {
     return Ok(config);
 }
 
-pub fn run_watcher() -> Result<()> {
-    let config = parse_args()?;
-
+pub fn run_watcher(config: Config) -> Result<()> {
     let mut actions: Vec<Box<dyn Action>> = Vec::new();
     for cmd in config.command {
         let Ok(c) = CommandAction::new(cmd) else { continue };

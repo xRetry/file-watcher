@@ -1,6 +1,7 @@
 use anyhow::Result;
-use file_watcher::run_watcher;
+use file_watcher::{run_watcher, parse_args};
 
 fn main() -> Result<()> {
-    return run_watcher();
+    let config = parse_args()?;
+    return run_watcher(config);
 }
