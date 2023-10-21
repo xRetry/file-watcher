@@ -1,7 +1,7 @@
 use notify::{Watcher, RecursiveMode, EventKind, event::ModifyKind, RecommendedWatcher};
 use regex::RegexSet;
 use std::path::{Path, PathBuf};
-use anyhow::{Result, bail};
+use anyhow::Result;
 use std::process::Command;
 use serde::Deserialize;
 
@@ -23,12 +23,12 @@ trait Action {
     fn exec_if_match(&self, path: &PathBuf) -> bool;
 }
 
-struct CommandAction<'a> {
+struct CommandAction {
     regex: RegexSet,
-    commands: Vec<(&'a str, Vec<&'a str>)>
+    commands: Vec<(String, Vec<String>)>
 }
 
-impl<'a> CommandAction<'a> {
+impl CommandAction {
     fn new(config: CommandConfig) -> Result<Self> {
         let regex = RegexSet::new(&[config.regex])?;
 
@@ -39,22 +39,22 @@ impl<'a> CommandAction<'a> {
             commands = chain;
         }
 
-        let command: Vec<(&'a str, Vec<&'a str>)> = commands.into_iter()
+        let commands = commands.into_iter()
             .map(|cmd| {
-                let mut cmd_split = cmd.split_whitespace();
+                let mut cmd_split = cmd.split_whitespace().map(String::from);
                 let Some(c) = cmd_split.next() else {
                     panic!("Invalid command!");
                 };
-                let a  = cmd_split.collect();
+                let a = cmd_split.collect();
                 return (c, a)
             })
             .collect();
 
-        Ok(Self{ regex, commands: command })
+        return Ok(Self{ regex, commands });
     }
 }
 
-impl Action for CommandAction<'_> {
+impl Action for CommandAction {
     fn exec_if_match(&self, path: &PathBuf) -> bool {
         let path_str = path.to_str()
             .unwrap();
@@ -103,11 +103,6 @@ impl Action for CommandAction<'_> {
 
         return true;
     }
-}
-
-struct ChainAction<'a> {
-    regex: RegexSet,
-    commands: (&'a str, Vec<&'a str>)
 }
 
 fn parse_args() -> Result<Config> {
