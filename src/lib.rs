@@ -1,6 +1,6 @@
-use notify::{Watcher, RecursiveMode, EventKind, event::ModifyKind, RecommendedWatcher};
+use notify::{Watcher, RecursiveMode, EventKind, event::ModifyKind, RecommendedWatcher, Event, Error};
 use regex::RegexSet;
-use std::path::{Path, PathBuf};
+use std::{path::{Path, PathBuf}, sync::mpsc::{Sender, Receiver}};
 use anyhow::Result;
 use std::process::Command;
 use serde::Deserialize;
@@ -115,14 +115,15 @@ pub fn parse_args() -> Result<Config> {
     return Ok(config);
 }
 
-pub fn run_watcher(config: Config) -> Result<()> {
+pub fn run_watcher(config: Config, channel: Option<(Sender<Result<Event, Error>>, Receiver<Result<Event, Error>>)>) -> Result<()> {
     let mut actions: Vec<Box<dyn Action>> = Vec::new();
     for cmd in config.command {
         let Ok(c) = CommandAction::new(cmd) else { continue };
         actions.push(Box::new(c));
     }
 
-    let (tx, rx) = std::sync::mpsc::channel();
+    let (tx, rx) = channel.unwrap_or(std::sync::mpsc::channel());
+
     let mut watcher = RecommendedWatcher::new(tx, notify::Config::default())?;
     watcher.watch(Path::new(&config.path.unwrap_or(".".to_string())), RecursiveMode::Recursive)?;
     watcher.unwatch(Path::new("target"))?;
@@ -138,6 +139,11 @@ pub fn run_watcher(config: Config) -> Result<()> {
                             for action in &actions {
                                 action.exec_if_match(path_buff);
                             }
+                        }
+                    },
+                    EventKind::Other => {
+                        if event.info() == Some("exit") {
+                            return Ok(());
                         }
                     },
                     _ => {},
