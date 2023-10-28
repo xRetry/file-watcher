@@ -10,7 +10,7 @@ fn test_fn() {
         command: vec![
             CommandConfig{
                 regex: "a$".to_string(),
-                cmd: Some("cat {file_dir}/{file} > {file_dir}/b".to_string()),
+                cmd: Some("sh -c 'cat {file_dir}/{file} > {file_dir}/b'".to_string()),
                 chain: None,
             }
         ],
@@ -22,10 +22,10 @@ fn test_fn() {
 
     std::thread::sleep(Duration::from_secs(1));
 
-    std::fs::write("tests/files/a", "2").unwrap();
+    std::fs::write("tests/files/a", "3").unwrap();
 
     std::thread::sleep(Duration::from_secs(3));
 
     let b_content = std::fs::read_to_string("tests/files/b").unwrap();
-    assert_eq!("2", b_content);
+    assert_eq!("3", b_content);
 }

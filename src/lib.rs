@@ -1,9 +1,10 @@
-use notify::{Watcher, RecursiveMode, EventKind, event::ModifyKind, RecommendedWatcher, Event, Error};
+use notify::{Watcher, RecursiveMode, EventKind, event::{ModifyKind, DataChange}, RecommendedWatcher, Event, Error};
 use regex::RegexSet;
 use std::{path::{Path, PathBuf}, sync::mpsc::{Sender, Receiver}};
 use anyhow::Result;
 use std::process::Command;
 use serde::Deserialize;
+use shlex::Shlex;
 
 #[derive(Debug, Deserialize)]
 pub struct CommandConfig {
@@ -41,7 +42,7 @@ impl CommandAction {
 
         let commands = commands.into_iter()
             .map(|cmd| {
-                let mut cmd_split = cmd.split_whitespace().map(String::from);
+                let mut cmd_split = Shlex::new(&cmd);
                 let Some(c) = cmd_split.next() else {
                     panic!("Invalid command!");
                 };
@@ -56,6 +57,7 @@ impl CommandAction {
 
 impl Action for CommandAction {
     fn exec_if_match(&self, path: &PathBuf) -> bool {
+        let path = path.canonicalize().unwrap();
         let path_str = path.to_str()
             .unwrap();
         if !self.regex.is_match(path_str) { return false; }
@@ -89,8 +91,15 @@ impl Action for CommandAction {
             }
             
             match command.output() {
-                Ok(_) => {
-                    print!("done\n");
+                Ok(output) => {
+                    match output.status.code() {
+                        Some(0) => println!("done"),
+                        _ => {
+                            println!("error");
+                            println!(">>> Command: {:?}", command);
+                            println!(">>> StdOut: {}", &std::str::from_utf8(&output.stderr).unwrap());
+                        },
+                    }
                 },
                 Err(e) => {
                     println!("error");
@@ -134,7 +143,8 @@ pub fn run_watcher(config: Config, channel: Option<(Sender<Result<Event, Error>>
         match event {
             Ok(event) => {
                 match event.kind {
-                    EventKind::Modify(ModifyKind::Any) => {
+                    EventKind::Modify(ModifyKind::Data(_)) | // Linux
+                    EventKind::Modify(ModifyKind::Any) => { // Windows
                         for path_buff in &event.paths {
                             for action in &actions {
                                 action.exec_if_match(path_buff);

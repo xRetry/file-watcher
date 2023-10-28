@@ -2,8 +2,8 @@ exclude:
   - ignore
 
 command:
-  - regex: ".scss$"
-    cmd: cmd /c sass {file_dir}/{file}:{file_dir}/css/{file_name}.css
+  - regex: "files/a$"
+    cmd: sh -c "cat {file_dir}/{file} > {file_dir}/b"
 
   - regex: "chain"
     chain: 
