@@ -1,6 +1,6 @@
-use notify::{Watcher, RecursiveMode, EventKind, event::{ModifyKind, DataChange}, RecommendedWatcher, Event, Error};
+use notify::{Watcher, RecursiveMode, EventKind, event::ModifyKind, RecommendedWatcher, Event, Error};
 use regex::RegexSet;
-use std::{path::{Path, PathBuf}, sync::mpsc::{Sender, Receiver}};
+use std::{path::{Path, PathBuf}, sync::mpsc::{Sender, Receiver}, collections::HashSet};
 use anyhow::Result;
 use std::process::Command;
 use serde::Deserialize;
@@ -131,6 +131,13 @@ pub fn run_watcher(config: Config, channel: Option<(Sender<Result<Event, Error>>
         actions.push(Box::new(c));
     }
 
+    //let exclude_dirs = config.exclude 
+    //    .unwrap_or(Vec::new());
+    //let exclude_dirs: HashSet<_> = exclude_dirs
+    //    .iter()
+    //    .map(|path_str| Path::new(path_str))
+    //    .collect();
+
     let (tx, rx) = channel.unwrap_or(std::sync::mpsc::channel());
 
     let mut watcher = RecommendedWatcher::new(tx, notify::Config::default())?;
@@ -146,6 +153,11 @@ pub fn run_watcher(config: Config, channel: Option<(Sender<Result<Event, Error>>
                     EventKind::Modify(ModifyKind::Data(_)) | // Linux
                     EventKind::Modify(ModifyKind::Any) => { // Windows
                         for path_buff in &event.paths {
+                            // TODO(marco): Fix path matching for exclude dirs
+                            //if exclude_dirs.contains(path_buff.as_path()) {
+                            //        continue;
+                            //}
+
                             for action in &actions {
                                 action.exec_if_match(path_buff);
                             }
