@@ -1,10 +1,11 @@
-use notify::{Watcher, RecursiveMode, EventKind, event::ModifyKind, RecommendedWatcher, Event, Error};
+use notify_debouncer_full::notify::{Watcher, RecursiveMode, EventKind, event::ModifyKind};
 use regex::RegexSet;
-use std::{path::{Path, PathBuf}, sync::mpsc::{Sender, Receiver}, collections::HashSet};
+use std::path::{Path, PathBuf};
 use anyhow::Result;
 use std::process::Command;
 use serde::Deserialize;
 use shlex::Shlex;
+use notify_debouncer_full::new_debouncer;
 
 #[derive(Debug, Deserialize)]
 pub struct CommandConfig {
@@ -93,7 +94,7 @@ impl Action for CommandAction {
             match command.output() {
                 Ok(output) => {
                     match output.status.code() {
-                        Some(0) => println!("done"),
+                        Some(0) => (),
                         _ => {
                             println!("error");
                             println!(">>> Command: {:?}", command);
@@ -110,6 +111,7 @@ impl Action for CommandAction {
             };
         }
 
+        println!("done");
         return true;
     }
 }
@@ -124,7 +126,7 @@ pub fn parse_args() -> Result<Config> {
     return Ok(config);
 }
 
-pub fn run_watcher(config: Config, channel: Option<(Sender<Result<Event, Error>>, Receiver<Result<Event, Error>>)>) -> Result<()> {
+pub fn run_watcher(config: Config) -> Result<()> {
     let mut actions: Vec<Box<dyn Action>> = Vec::new();
     for cmd in config.command {
         let Ok(c) = CommandAction::new(cmd) else { continue };
@@ -138,41 +140,45 @@ pub fn run_watcher(config: Config, channel: Option<(Sender<Result<Event, Error>>
     //    .map(|path_str| Path::new(path_str))
     //    .collect();
 
-    let (tx, rx) = channel.unwrap_or(std::sync::mpsc::channel());
+    let (tx, rx) = std::sync::mpsc::channel();
 
-    let mut watcher = RecommendedWatcher::new(tx, notify::Config::default())?;
-    watcher.watch(Path::new(&config.path.unwrap_or(".".to_string())), RecursiveMode::Recursive)?;
-    watcher.unwatch(Path::new("target"))?;
+    let mut debouncer = new_debouncer(std::time::Duration::from_millis(200), None, tx)?;
+
+    debouncer
+        .watcher()
+        .watch(Path::new(&config.path.unwrap_or(".".to_string())), RecursiveMode::Recursive)?;
 
     println!("Config loaded - Waiting for changes..");
 
-    for event in rx {
-        match event {
-            Ok(event) => {
-                match event.kind {
-                    EventKind::Modify(ModifyKind::Data(_)) | // Linux
-                    EventKind::Modify(ModifyKind::Any) => { // Windows
-                        for path_buff in &event.paths {
-                            // TODO(marco): Fix path matching for exclude dirs
-                            //if exclude_dirs.contains(path_buff.as_path()) {
-                            //        continue;
-                            //}
+    for events in rx {
+        match events {
+            Ok(events) => {
+                for event in events {
+                    match event.kind {
+                        EventKind::Modify(ModifyKind::Data(_)) | // Linux
+                        EventKind::Modify(ModifyKind::Any) => { // Windows
+                            for path_buff in &event.paths {
+                                // TODO(marco): Fix path matching for exclude dirs
+                                //if exclude_dirs.contains(path_buff.as_path()) {
+                                //        continue;
+                                //}
 
-                            for action in &actions {
-                                action.exec_if_match(path_buff);
+                                for action in &actions {
+                                    action.exec_if_match(path_buff);
+                                }
                             }
-                        }
-                    },
-                    EventKind::Other => {
-                        if event.info() == Some("exit") {
-                            return Ok(());
-                        }
-                    },
-                    _ => {},
-                }
-            }
+                        },
+                        EventKind::Other => {
+                            if event.info() == Some("exit") {
+                                return Ok(());
+                            }
+                        },
+                        _ => {},
+                    } // match event.kind
+                } // for
+            },
             Err(e) => println!("watch error: {:?}", e),
-        }
+        } // match events
     }
     Ok(())
 }
