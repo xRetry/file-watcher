@@ -25,16 +25,22 @@ fn test_simple() {
     fs::write("tests/files/test_simple/out", "0").unwrap();
 
     let config = Config{
-        path: None,
+        paths: None,
         exclude: None,
         command: vec![
             CommandConfig{
                 regex: "test_simple/a$".to_string(),
+                #[cfg(target_os = "windows")]
+                cmd: Some("powershell -Command 'cat {file_dir}/{file} >> tests/files/test_simple/out'".to_string()),
+                #[cfg(not(target_os = "windows"))]
                 cmd: Some("sh -c 'cat {file_dir}/{file} >> tests/files/test_simple/out'".to_string()),
                 chain: None,
             },
             CommandConfig{
                 regex: "test_simple/b$".to_string(),
+                #[cfg(target_os = "windows")]
+                cmd: Some("powershell -Command 'cat {file_dir}/{file} >> tests/files/test_simple/out'".to_string()),
+                #[cfg(not(target_os = "windows"))]
                 cmd: Some("sh -c 'cat {file_dir}/{file} >> tests/files/test_simple/out'".to_string()),
                 chain: None,
             },
@@ -68,14 +74,16 @@ fn test_chain() {
     fs::write("tests/files/test_chain/out", "0").unwrap();
 
     let config = Config{
-        path: None,
+        paths: None,
         exclude: None,
         command: vec![
             CommandConfig{
                 regex: "test_chain/a$".to_string(),
                 cmd: None,
                 chain: Some(vec![
-                    "sh -c 'echo 1 >> tests/files/test_chain/out'".to_string(),
+                    #[cfg(target_os = "windows")]
+                    "powershell -Command 'echo 1 >> tests/files/test_chain/out'".to_string(),
+                    #[cfg(not(target_os = "windows"))]
                     "sh -c 'echo 2 >> tests/files/test_chain/out'".to_string(),
                 ]),
             }

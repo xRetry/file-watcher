@@ -1,14 +1,14 @@
 exclude:
   - ignore
 
+paths:
+  - "tests/files/"
+
 command:
-  - regex: "files/a$"
-    cmd: sh -c "cat {file_dir}/{file} > {file_dir}/b"
+  - regex: "a$"
+    cmd: powershell -Command "cat {file_dir}/{file} > {file_dir}/b"
 
-  - regex: "chain"
+  - regex: "files/d$"
     chain: 
-      - efase
-      - fasefa
-      - efase
-
-
+      - powershell -Command "cat {file_dir}/{file} >> {file_dir}/b"
+      - powershell -Command "cat {file_dir}/b > {file_dir}/c"

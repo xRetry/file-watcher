@@ -16,7 +16,7 @@ pub struct CommandConfig {
 
 #[derive(Debug, Deserialize)]
 pub struct Config {
-    pub path: Option<String>,
+    pub paths: Option<Vec<String>>,
     pub exclude: Option<Vec<String>>,
     pub command: Vec<CommandConfig>,
 }
@@ -58,7 +58,7 @@ impl CommandAction {
 
 impl Action for CommandAction {
     fn exec_if_match(&self, path: &PathBuf) -> bool {
-        let path = path.canonicalize().unwrap();
+        //let path = path.canonicalize().unwrap();
         let path_str = path.to_str()
             .unwrap();
         if !self.regex.is_match(path_str) { return false; }
@@ -99,6 +99,7 @@ impl Action for CommandAction {
                             println!("error");
                             println!(">>> Command: {:?}", command);
                             println!(">>> StdOut: {}", &std::str::from_utf8(&output.stderr).unwrap());
+                            return false;
                         },
                     }
                 },
@@ -106,7 +107,7 @@ impl Action for CommandAction {
                     println!("error");
                     println!(">>> Command: {:?}", command);
                     println!(">>> Error: {}", e);
-                    return false
+                    return false;
                 },
             };
         }
@@ -144,9 +145,12 @@ pub fn run_watcher(config: Config) -> Result<()> {
 
     let mut debouncer = new_debouncer(std::time::Duration::from_millis(200), None, tx)?;
 
-    debouncer
-        .watcher()
-        .watch(Path::new(&config.path.unwrap_or(".".to_string())), RecursiveMode::Recursive)?;
+    let watcher = debouncer.watcher();
+
+    let paths = config.paths.unwrap_or(vec![".".to_string()]);
+    for path in paths {
+        watcher.watch(Path::new(&path), RecursiveMode::Recursive)?;
+    }
 
     println!("Config loaded - Waiting for changes..");
 
