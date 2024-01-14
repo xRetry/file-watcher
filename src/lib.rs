@@ -1,4 +1,4 @@
-use notify_debouncer_full::notify::{Watcher, RecursiveMode, EventKind, event::{ModifyKind, AccessKind, AccessMode, CreateKind}};
+use notify_debouncer_full::notify::{Watcher, RecursiveMode, EventKind, event::{ModifyKind, CreateKind}};
 use std::path::Path;
 use anyhow::Result;
 use notify_debouncer_full::new_debouncer;
