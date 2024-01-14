@@ -1,14 +1,6 @@
-exclude:
-  - ignore
-
 paths:
-  - "tests/files/"
+  - src
 
 command:
-  - regex: "a$"
-    cmd: powershell -Command "cat {file_dir}/{file} > {file_dir}/b"
-
-  - regex: "files/d$"
-    chain: 
-      - powershell -Command "cat {file_dir}/{file} >> {file_dir}/b"
-      - powershell -Command "cat {file_dir}/b > {file_dir}/c"
+  - regex: ".*.rs$"
+    cmd: bash -c "cargo build"

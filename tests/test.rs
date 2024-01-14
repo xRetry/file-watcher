@@ -2,7 +2,8 @@ use std::time::Duration;
 use std::path::Path;
 use std::fs;
 
-use file_watcher::{run_watcher, Config, CommandConfig};
+use file_watcher::run_watcher;
+use file_watcher::config::{Config, CommandConfig};
 
 struct Cleanup {
     path: String,
