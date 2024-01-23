@@ -17,6 +17,8 @@
                     ];
                 };
             in rec {
+                packages.default = pkgs.callPackage ./derivation.nix {};
+
                 devShell = pkgs.mkShell {
                     buildInputs = with pkgs; [ 
                         cmake

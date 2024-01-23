@@ -27,7 +27,6 @@ fn test_simple() {
 
     let config = Config{
         paths: None,
-        exclude: None,
         command: vec![
             CommandConfig{
                 regex: "test_simple/a$".to_string(),
@@ -76,7 +75,6 @@ fn test_chain() {
 
     let config = Config{
         paths: None,
-        exclude: None,
         command: vec![
             CommandConfig{
                 regex: "test_chain/a$".to_string(),
