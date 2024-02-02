@@ -11,7 +11,7 @@ use actions::{Action, CommandAction};
 
 pub fn run_watcher(config: Config) -> Result<()> {
     let mut actions: Vec<Box<dyn Action>> = Vec::new();
-    for cmd in config.command {
+    for cmd in config.commands {
         let c = CommandAction::new(cmd);
         actions.push(Box::new(c));
     }

@@ -27,7 +27,7 @@ fn test_simple() {
 
     let config = Config{
         paths: None,
-        command: vec![
+        commands: vec![
             CommandConfig{
                 regex: "test_simple/a$".to_string(),
                 #[cfg(target_os = "windows")]
@@ -75,7 +75,7 @@ fn test_chain() {
 
     let config = Config{
         paths: None,
-        command: vec![
+        commands: vec![
             CommandConfig{
                 regex: "test_chain/a$".to_string(),
                 cmd: None,

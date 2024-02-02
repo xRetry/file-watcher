@@ -1,7 +1,7 @@
 { pkgs, stdenv }:
 pkgs.rustPlatform.buildRustPackage rec {
     pname = "file-watcher-${version}";
-    version = "1.0";
+    version = "1.0.0";
 
     src = ./.;
 

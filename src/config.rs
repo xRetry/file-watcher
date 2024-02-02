@@ -11,7 +11,7 @@ pub struct CommandConfig {
 #[derive(Debug, Deserialize)]
 pub struct Config {
     pub paths: Option<Vec<String>>,
-    pub command: Vec<CommandConfig>,
+    pub commands: Vec<CommandConfig>,
 }
 
 pub fn parse_args() -> Result<Config> {

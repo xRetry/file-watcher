@@ -1,6 +1,6 @@
 paths:
   - src
 
-command:
+commands:
   - regex: ".*.rs$"
     cmd: bash -c "cargo build"
