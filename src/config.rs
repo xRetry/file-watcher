@@ -6,6 +6,7 @@ pub struct CommandConfig {
     pub regex: String,
     pub cmd: Option<String>,
     pub chain: Option<Vec<String>>,
+    pub exclude: Option<Vec<String>>,
 }
 
 #[derive(Debug, Deserialize)]

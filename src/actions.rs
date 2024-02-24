@@ -10,12 +10,17 @@ pub trait Action {
 
 pub struct CommandAction {
     regex: RegexSet,
-    commands: Vec<(String, Vec<String>)>
+    commands: Vec<(String, Vec<String>)>,
+    exclude: Option<RegexSet>,
 }
 
 impl CommandAction {
     pub fn new(config: CommandConfig) -> Self {
         let regex = RegexSet::new(&[config.regex]).unwrap();
+
+        let exclude = config.exclude.map(
+            |x| RegexSet::new(x).unwrap()
+        );
 
         let mut commands = Vec::new();
         if let Some(cmd) = config.cmd {
@@ -35,7 +40,7 @@ impl CommandAction {
             })
             .collect();
 
-        return Self{ regex, commands };
+        return Self{ regex, commands, exclude };
     }
 }
 
@@ -45,7 +50,11 @@ impl Action for CommandAction {
         let path_str = path.to_str()
             .unwrap();
 
-        if !self.regex.is_match(path_str) { return false; }
+        if self.exclude.as_ref().is_some_and(|e| e.is_match(path_str))
+        || !self.regex.is_match(path_str) { 
+            return false; 
+        }
+
         print!("{} ... ", path_str);
 
         let file = path.file_name()
